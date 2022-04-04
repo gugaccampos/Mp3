@@ -6,7 +6,9 @@ import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
 
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
@@ -14,6 +16,8 @@ import java.util.ArrayList;
 public class Player {
     ArrayList<String[]> musicas;
     int tam_musicas;
+
+    private int numero_de_musica = 0;
 
     /**
      * The MPEG audio bitstream.
@@ -36,6 +40,8 @@ public class Player {
     private boolean playerEnabled = false;
     private boolean playerPaused = true;
     private Song currentSong;
+    private Song[] arr_musicas = new Song[100];
+    private Song new_music;
     private int currentFrame = 0;
     private int newFrame;
 
@@ -45,8 +51,28 @@ public class Player {
             //tocar(); função para tocar
         };
 
-        ActionListener buttonListenerAddSong = e ->{
-            Song song;
+        ActionListener buttonListenerAddSong = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    new_music = window.getNewSong();
+                    addToQueue(new_music);
+                    window.updateQueueList(getQueueAsArray());
+                }
+                catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                catch (BitstreamException ex) {
+                    ex.printStackTrace();
+                }
+                catch (UnsupportedTagException ex) {
+                    ex.printStackTrace();
+                }
+                catch (InvalidDataException ex) {
+                    ex.printStackTrace();
+                }
+
+            }
         };
 
         ActionListener buttonListenerPlayPause= e ->{
@@ -140,12 +166,25 @@ public class Player {
 
     //<editor-fold desc="Queue Utilities">
     public void addToQueue(Song song) {
+        Song[] newqueue = new Song[arr_musicas.length+1];
+        for (int i=0;i<arr_musicas.length;i++){
+            newqueue[i]=arr_musicas[i];
+        }
+        newqueue[arr_musicas.length]=song;
+        arr_musicas=newqueue;
+
     }
 
     public void removeFromQueue(String filePath) {
     }
 
-    public void  getQueueAsArray() {
+    public String[][] getQueueAsArray() {
+        String[][] array = new String[musicas.size()][7];
+        for (int i = 0; i< arr_musicas.length; i++){
+            if (arr_musicas[i]!=null){
+                array[i] = arr_musicas[i].getDisplayInfo();}
+        }
+        return array;
     }
 
     //</editor-fold>
