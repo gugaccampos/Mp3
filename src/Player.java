@@ -40,7 +40,6 @@ public class Player {
     private boolean playerEnabled = false;
     private boolean playerPaused = true;
     private Song currentSong;
-    private Song[] arr_musicas = new Song[0];
     private Song new_music;
     private int currentFrame = 0;
     private int newFrame;
@@ -74,10 +73,17 @@ public class Player {
 
         };
 
-        ActionListener buttonListenerRemove = e ->{
-            String id = window.getSelectedSong();
-            musicas.remove(Integer.parseInt(id));
-            window.updateQueueList(getQueueAsArray());
+        ActionListener buttonListenerRemove = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String id = window.getSelectedSong();
+                for (int i = 0; i< musicas.size(); i++){
+                    if (musicas.get(i).getFilePath() == id){
+                        musicas.remove(i);
+                    }
+                }
+                window.updateQueueList(getQueueAsArray());
+            }
         };
 
         ActionListener buttonListenerShuffle = e ->{
@@ -169,8 +175,6 @@ public class Player {
                 musicas.add(queue[i]);
             }
         }
-
-
     }
 
     public void removeFromQueue(String filePath) {
