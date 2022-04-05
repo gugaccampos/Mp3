@@ -5,7 +5,10 @@ import javazoom.jl.player.AudioDevice;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
-
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.io.FileNotFoundException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -15,7 +18,6 @@ import java.util.ArrayList;
 
 public class Player {
     ArrayList<Song> musicas = new ArrayList<Song>();
-    int tam_musicas;
 
     private int numero_de_musica = 0;
 
@@ -37,17 +39,29 @@ public class Player {
 
     private boolean repeat = false;
     private boolean shuffle = false;
-    private boolean playerEnabled = false;
+    private boolean playerEnabled = true;
     private boolean playerPaused = true;
     private Song currentSong;
     private Song new_music;
     private int currentFrame = 0;
     private int newFrame;
+    private Thread thread;
+    private boolean tocando = false;
+    private Lock lock = new ReentrantLock();
+    private Lock lockReproducao = new ReentrantLock();
+    private Condition paused = lockReproducao.newCondition();
+    private boolean stop = false;
 
     public Player() {
         this.musicas = new ArrayList<Song>();
-        ActionListener buttonListenerPlayNow = e ->{
-            //tocar(); função para tocar
+        ActionListener buttonListenerPlayNow = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (getPlay()){
+                    setStop();
+                }
+                start(window.getSelectedSong());
+            }
         };
 
         ActionListener buttonListenerAddSong = new ActionListener() {
@@ -57,28 +71,45 @@ public class Player {
                     new_music = window.getNewSong();
                     addToQueue(new_music);
                     window.updateQueueList(getQueueAsArray());
+                } catch (BitstreamException | InvalidDataException | UnsupportedTagException | IOException ex) {
+                    ex.printStackTrace();
                 }
-                catch (BitstreamException | InvalidDataException | UnsupportedTagException | IOException ex) {
-                ex.printStackTrace();
-            }
 
             }
         };
 
-        ActionListener buttonListenerPlayPause= e ->{
-            //pause(); função para pausar
+        ActionListener buttonListenerPlayPause = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!playerPaused) {
+                    playerPaused = true;
+                    window.updatePlayPauseButtonIcon(false);
+                    lockReproducao.lock();
+                    try {
+                        paused.signalAll();
+                    } finally {
+                        lockReproducao.unlock();
+                    }
+                } else {
+                    playerPaused = false;
+                    window.updatePlayPauseButtonIcon(true);
+                }
+            }
         };
 
-        ActionListener buttonListenerStop = e ->{
-
+        ActionListener buttonListenerStop = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setStop();
+            }
         };
 
         ActionListener buttonListenerRemove = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String id = window.getSelectedSong();
-                for (int i = 0; i< musicas.size(); i++){
-                    if (musicas.get(i).getFilePath() == id){
+                for (int i = 0; i < musicas.size(); i++) {
+                    if (musicas.get(i).getFilePath() == id) {
                         musicas.remove(i);
                     }
                 }
@@ -86,25 +117,25 @@ public class Player {
             }
         };
 
-        ActionListener buttonListenerShuffle = e ->{
+        ActionListener buttonListenerShuffle = e -> {
 
         };
 
-        ActionListener buttonListenerPrevious = e ->{
+        ActionListener buttonListenerPrevious = e -> {
 
         };
 
-        ActionListener buttonListenerNext = e ->{
+        ActionListener buttonListenerNext = e -> {
 
         };
 
-        ActionListener buttonListenerRepeat = e ->{
+        ActionListener buttonListenerRepeat = e -> {
 
         };
-        ActionListener scrubberListenerClick = e ->{
+        ActionListener scrubberListenerClick = e -> {
 
         };
-        ActionListener scrubberListenerMotion = e ->{
+        ActionListener scrubberListenerMotion = e -> {
 
         };
 
@@ -128,6 +159,7 @@ public class Player {
             SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
             device.write(output.getBuffer(), 0, output.getBufferLength());
             bitstream.closeFrame();
+            currentFrame ++;
         }
         return true;
     }
@@ -162,18 +194,57 @@ public class Player {
 
 
 
-
     //<editor-fold desc="Queue Utilities">
     public void addToQueue(Song song) {
-        Song[] queue = new Song[musicas.size()+1];
-        for (int i=0;i<musicas.size();i++){
-            queue[i]=musicas.get(i);
+        lock.lock();
+        try {
+            musicas.add(song);
+        } finally {
+            lock.unlock();
         }
-        queue[musicas.size()]=song;
-        for (int i = 0; i< queue.length; i++){
-            if (queue[i]!=null){
-                musicas.add(queue[i]);
+    }
+
+    private void setPlay() {
+        lock.lock();
+        try {
+            if (!tocando){
+                tocando = true;
+            } else {
+                tocando = false;
             }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean getPlay() {
+        lock.lock();
+        try {
+            return tocando;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void setStop() {
+        lock.lock();
+        try {
+            if (stop==false){
+                stop = true;
+            } else {
+                stop = false;
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean getStop() {
+        lock.lock();
+        try {
+            return stop;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -182,9 +253,10 @@ public class Player {
 
     public String[][] getQueueAsArray() {
         String[][] array = new String[musicas.size()][7];
-        for (int i = 0; i< musicas.size(); i++){
-            if (musicas.get(i)!=null){
-                array[i] = musicas.get(i).getDisplayInfo();}
+        for (int i = 0; i < musicas.size(); i++) {
+            if (musicas.get(i) != null) {
+                array[i] = musicas.get(i).getDisplayInfo();
+            }
         }
         return array;
     }
@@ -193,6 +265,23 @@ public class Player {
 
     //<editor-fold desc="Controls">
     public void start(String filePath) {
+
+        for (int i = 0; i < musicas.size(); i++) {
+            if (filePath.equals(musicas.get(i).getFilePath())) {
+                currentSong = musicas.get(i);
+            }
+        }
+        try {
+            bitstream = new Bitstream(currentSong.getBufferedInputStream());
+            device = FactoryRegistry.systemRegistry().createAudioDevice();
+            device.open(decoder = new Decoder());
+            thread = new Thread(new Play());
+            thread.start();
+
+        } catch (FileNotFoundException | JavaLayerException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void stop() {
@@ -208,6 +297,43 @@ public class Player {
     }
 
     public void previous() {
+    }
+    class Play implements Runnable {
+
+        @Override
+        public void run() {
+            window.setEnabledPlayPauseButton(true);
+            window.setEnabledStopButton(true);
+            window.updatePlayPauseButtonIcon(false);
+            currentFrame = 0;
+            setPlay();
+            boolean x = true;
+            while (x && playerEnabled) {
+                if (!playerPaused){
+                    lockReproducao.lock();
+                    try {
+                        paused.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        lockReproducao.unlock();
+                    }
+
+                }
+                if (getStop()){
+                    setStop();
+                    break;
+                }
+                try {
+                    x = playNextFrame();
+                    window.setTime((int) (currentFrame * currentSong.getMsPerFrame()), (int) currentSong.getMsLength());
+                } catch (JavaLayerException ignore) {
+                }
+            }
+            window.resetMiniPlayer();
+            currentFrame = 0;
+            setPlay();
+        }
     }
     //</editor-fold>
 
