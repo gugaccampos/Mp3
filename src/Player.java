@@ -51,6 +51,7 @@ public class Player {
     private Lock lockReproducao = new ReentrantLock();
     private Condition paused = lockReproducao.newCondition();
     private boolean stop = false;
+    private boolean repetido = false;
 
     public Player() {
         this.musicas = new ArrayList<Song>();
@@ -108,6 +109,9 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String id = window.getSelectedSong();
+                if (currentSong.getFilePath().equals(id) && thread!=null){
+                    setStop();
+                }
                 for (int i = 0; i < musicas.size(); i++) {
                     if (musicas.get(i).getFilePath() == id) {
                         musicas.remove(i);
@@ -198,7 +202,19 @@ public class Player {
     public void addToQueue(Song song) {
         lock.lock();
         try {
-            musicas.add(song);
+            for (int i=0;i<musicas.size();i++) {
+                String caminho = musicas.get(i).getFilePath();
+                if (caminho.equals(song.getFilePath())){
+                    repetido = true;
+                }
+            }
+            if (!repetido){
+                musicas.add(song);
+            } else {
+                repetido = false;
+                System.out.println("Esta música já foi adicionada");
+            }
+
         } finally {
             lock.unlock();
         }
@@ -207,11 +223,7 @@ public class Player {
     private void setPlay() {
         lock.lock();
         try {
-            if (!tocando){
-                tocando = true;
-            } else {
-                tocando = false;
-            }
+            tocando = !tocando;
         } finally {
             lock.unlock();
         }
@@ -229,11 +241,7 @@ public class Player {
     private void setStop() {
         lock.lock();
         try {
-            if (stop==false){
-                stop = true;
-            } else {
-                stop = false;
-            }
+            stop = !stop;
         } finally {
             lock.unlock();
         }
@@ -302,13 +310,13 @@ public class Player {
 
         @Override
         public void run() {
-            window.setEnabledPlayPauseButton(true);
-            window.setEnabledStopButton(true);
             window.updatePlayPauseButtonIcon(false);
             currentFrame = 0;
             setPlay();
             boolean x = true;
             while (x && playerEnabled) {
+                window.setEnabledPlayPauseButton(true);
+                window.setEnabledStopButton(true);
                 if (!playerPaused){
                     lockReproducao.lock();
                     try {
