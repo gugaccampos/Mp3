@@ -14,7 +14,7 @@ import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
 
 public class Player {
-    ArrayList<String[]> musicas;
+    ArrayList<Song> musicas = new ArrayList<Song>();
     int tam_musicas;
 
     private int numero_de_musica = 0;
@@ -40,13 +40,13 @@ public class Player {
     private boolean playerEnabled = false;
     private boolean playerPaused = true;
     private Song currentSong;
-    private Song[] arr_musicas = new Song[100];
+    private Song[] arr_musicas = new Song[0];
     private Song new_music;
     private int currentFrame = 0;
     private int newFrame;
 
     public Player() {
-        this.musicas = new ArrayList<>();
+        this.musicas = new ArrayList<Song>();
         ActionListener buttonListenerPlayNow = e ->{
             //tocar(); função para tocar
         };
@@ -59,18 +59,9 @@ public class Player {
                     addToQueue(new_music);
                     window.updateQueueList(getQueueAsArray());
                 }
-                catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-                catch (BitstreamException ex) {
-                    ex.printStackTrace();
-                }
-                catch (UnsupportedTagException ex) {
-                    ex.printStackTrace();
-                }
-                catch (InvalidDataException ex) {
-                    ex.printStackTrace();
-                }
+                catch (BitstreamException | InvalidDataException | UnsupportedTagException | IOException ex) {
+                ex.printStackTrace();
+            }
 
             }
         };
@@ -84,7 +75,9 @@ public class Player {
         };
 
         ActionListener buttonListenerRemove = e ->{
-
+            String id = window.getSelectedSong();
+            musicas.remove(Integer.parseInt(id));
+            window.updateQueueList(getQueueAsArray());
         };
 
         ActionListener buttonListenerShuffle = e ->{
@@ -166,12 +159,17 @@ public class Player {
 
     //<editor-fold desc="Queue Utilities">
     public void addToQueue(Song song) {
-        Song[] newqueue = new Song[arr_musicas.length+1];
-        for (int i=0;i<arr_musicas.length;i++){
-            newqueue[i]=arr_musicas[i];
+        Song[] queue = new Song[musicas.size()+1];
+        for (int i=0;i<musicas.size();i++){
+            queue[i]=musicas.get(i);
         }
-        newqueue[arr_musicas.length]=song;
-        arr_musicas=newqueue;
+        queue[musicas.size()]=song;
+        for (int i = 0; i< queue.length; i++){
+            if (queue[i]!=null){
+                musicas.add(queue[i]);
+            }
+        }
+
 
     }
 
@@ -180,9 +178,9 @@ public class Player {
 
     public String[][] getQueueAsArray() {
         String[][] array = new String[musicas.size()][7];
-        for (int i = 0; i< arr_musicas.length; i++){
-            if (arr_musicas[i]!=null){
-                array[i] = arr_musicas[i].getDisplayInfo();}
+        for (int i = 0; i< musicas.size(); i++){
+            if (musicas.get(i)!=null){
+                array[i] = musicas.get(i).getDisplayInfo();}
         }
         return array;
     }
