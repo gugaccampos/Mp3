@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Objects;
 
+
 public class PlayerWindow {
     private final String[] columnTitles = new String[]{"Title", "Album", "Artist", "Year", "Length", "Path"};
     private final ImageIcon iconShuffle = new ImageIcon(Objects.requireNonNull(Icons.class.getResource("shuffle-24.png")));
@@ -80,7 +81,9 @@ public class PlayerWindow {
             ActionListener buttonListenerPlayPause,
             ActionListener buttonListenerStop,
             ActionListener buttonListenerNext,
-            ActionListener buttonListenerRepeat)
+            ActionListener buttonListenerRepeat,
+            MouseListener scrubberListenerClick,
+            MouseMotionListener scrubberListenerMotion)
             {
 
         // Setting theme and typeface.
@@ -160,6 +163,7 @@ public class PlayerWindow {
         playNowButton.addActionListener(buttonListenerPlayNow);
         removeSongButton.addActionListener(buttonListenerRemove);
         addSongButton.addActionListener(buttonListenerAddSong);
+
         //</editor-fold>
 
         //<editor-fold desc="Miniplayer Panel">
@@ -246,6 +250,8 @@ public class PlayerWindow {
         miniPlayerStopButton.addActionListener(buttonListenerStop);
         miniPlayerNextButton.addActionListener(buttonListenerNext);
         miniPlayerRepeatButton.addActionListener(buttonListenerRepeat);
+        miniPlayerScrubber.addMouseListener(scrubberListenerClick);
+        miniPlayerScrubber.addMouseMotionListener(scrubberListenerMotion);
         //</editor-fold>
 
         window.setLayout(new BorderLayout());

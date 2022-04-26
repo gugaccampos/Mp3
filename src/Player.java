@@ -5,15 +5,13 @@ import javazoom.jl.player.AudioDevice;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
+
+import java.awt.event.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileNotFoundException;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
 
 public class Player {
@@ -136,17 +134,88 @@ public class Player {
         ActionListener buttonListenerRepeat = e -> {
 
         };
-        ActionListener scrubberListenerClick = e -> {
+        MouseListener scrubberListenerClick = new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
 
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+
+                newFrame = e.getX();
+                if (newFrame > currentFrame){
+                    try {
+                        skipToFrame(newFrame);
+                    } catch (BitstreamException ex) {
+                        ex.printStackTrace();
+                    }
+
+                } else {
+                    try {
+                    bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                    device = FactoryRegistry.systemRegistry().createAudioDevice();
+                    device.open(decoder = new Decoder());
+                    currentFrame = 0;
+                    }
+                    catch (FileNotFoundException | JavaLayerException j) {
+                        j.printStackTrace();
+                    }
+                    try {
+                        skipToFrame(newFrame);
+                    } catch (BitstreamException ex) {
+                        ex.printStackTrace();
+                    }
+
+                }
+                System.out.println(currentFrame + "  -  " + currentSong.getMsPerFrame() + " - " + newFrame);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+
+            }
         };
-        ActionListener scrubberListenerMotion = e -> {
 
+        MouseMotionListener scrubberListenerMotion = new MouseMotionListener() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+
+                //Essa parte ta fazendo nada quep preste
+                try {
+                    thread.wait();
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                currentFrame = e.getX();
+                thread.notify();
+                //rodar um Thread que fique recebendo o valor de e.getX e atualizando na tela, lide com
+                // o caso de e.getX sair da tela
+                //Pare quando o mouse deixar de ser pressionado
+
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+
+            }
         };
 
 
         this.window = new PlayerWindow(title, this.musicas.toArray(new String[0][0]), buttonListenerPlayNow,
                 buttonListenerRemove, buttonListenerAddSong, buttonListenerShuffle, buttonListenerPrevious,
-                buttonListenerPlayPause, buttonListenerStop, buttonListenerNext, buttonListenerRepeat);
+                buttonListenerPlayPause, buttonListenerStop, buttonListenerNext, buttonListenerRepeat ,scrubberListenerClick
+                ,scrubberListenerMotion);
     }
 
     //<editor-fold desc="Essential">
@@ -341,6 +410,20 @@ public class Player {
             window.resetMiniPlayer();
             currentFrame = 0;
             setPlay();
+        }
+    }
+
+    static class SliderArrasta implements  Runnable {
+
+        @Override
+        public void run() {
+            try {
+                System.out.println("rwr");
+            } finally {
+                
+            }
+            ;
+
         }
     }
     //</editor-fold>
