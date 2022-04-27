@@ -129,10 +129,17 @@ public class Player {
             public void actionPerformed(ActionEvent e) {
                 for (int i = 0; i < musicas.size(); i++) {
                     if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
-                        setStop();
-                        start(song);
-                    }
-                    else {
+                        if (i == 0){
+                            setStop();
+                            song = musicas.get(musicas.size()-1).getFilePath();
+                            start(song);
+                            break;
+                        } else {
+                            setStop();
+                            start(song);
+                            break;
+                        }
+                    } else {
                         song = musicas.get(i).getFilePath();
                     }
                 }
@@ -151,6 +158,13 @@ public class Player {
                         song = musicas.get(i).getFilePath();
                         setStop();
                         start(song);
+                        break;
+                    }
+                    if (i+1 == musicas.size()) {
+                        song = musicas.get(0).getFilePath();
+                        setStop();
+                        start(song);
+                        break;
                     }
                 }
             }
