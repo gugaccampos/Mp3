@@ -66,8 +66,6 @@ public class PlayerWindow {
      * @param buttonListenerStop      ActionListener for the "Stop" button.
      * @param buttonListenerNext      ActionListener for the "Next" button.
      * @param buttonListenerRepeat    ActionListener for the "Repeat" button.
-     * @param scrubberListenerClick   MouseListener for the Scrubber.
-     * @param scrubberListenerMotion  MouseMotionListener for the Scrubber.
      */
     public PlayerWindow(
             String windowTitle,
@@ -246,6 +244,8 @@ public class PlayerWindow {
         miniPlayerStopButton.addActionListener(buttonListenerStop);
         miniPlayerNextButton.addActionListener(buttonListenerNext);
         miniPlayerRepeatButton.addActionListener(buttonListenerRepeat);
+        miniPlayerScrubber.addMouseListener(scrubberListenerClick);
+        miniPlayerScrubber.addMouseMotionListener(scrubberListenerMotion);
         //</editor-fold>
 
         window.setLayout(new BorderLayout());

@@ -5,15 +5,13 @@ import javazoom.jl.player.AudioDevice;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
+
+import java.awt.event.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.FileNotFoundException;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
 
 public class Player {
@@ -44,7 +42,7 @@ public class Player {
     private Song currentSong;
     private Song new_music;
     private int currentFrame = 0;
-    private int newFrame;
+    private int newFrame = 0;
     private Thread thread;
     private boolean tocando = false;
     private Lock lock = new ReentrantLock();
@@ -136,17 +134,11 @@ public class Player {
         ActionListener buttonListenerRepeat = e -> {
 
         };
-        ActionListener scrubberListenerClick = e -> {
 
-        };
-        ActionListener scrubberListenerMotion = e -> {
-
-        };
-
-
-        this.window = new PlayerWindow(title, this.musicas.toArray(new String[0][0]), buttonListenerPlayNow,
-                buttonListenerRemove, buttonListenerAddSong, buttonListenerShuffle, buttonListenerPrevious,
-                buttonListenerPlayPause, buttonListenerStop, buttonListenerNext, buttonListenerRepeat);
+        this.window = new PlayerWindow(title, this.musicas.toArray(new String[0][0]),
+                buttonListenerPlayNow, buttonListenerRemove, buttonListenerAddSong,
+                buttonListenerShuffle, buttonListenerPrevious, buttonListenerPlayPause,
+                buttonListenerStop, buttonListenerNext, buttonListenerRepeat);
     }
 
     //<editor-fold desc="Essential">
