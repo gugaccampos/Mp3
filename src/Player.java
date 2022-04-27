@@ -41,6 +41,7 @@ public class Player {
     private boolean playerPaused = true;
     private Song currentSong;
     private Song new_music;
+    private String song;
     private int currentFrame = 0;
     private int newFrame;
     private Thread thread;
@@ -123,14 +124,37 @@ public class Player {
 
         };
 
-        ActionListener buttonListenerPrevious = e -> {
-
+        ActionListener buttonListenerPrevious = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                for (int i = 0; i < musicas.size(); i++) {
+                    if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
+                        setStop();
+                        start(song);
+                    }
+                    else {
+                        song = musicas.get(i).getFilePath();
+                    }
+                }
+            }
         };
 
-        ActionListener buttonListenerNext = e -> {
-
+        ActionListener buttonListenerNext = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int counter = 0;
+                for (int i = 0; i < musicas.size(); i++) {
+                    if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
+                        counter = 1;
+                    }
+                    else if (counter == 1){
+                        song = musicas.get(i).getFilePath();
+                        setStop();
+                        start(song);
+                    }
+                }
+            }
         };
-
         ActionListener buttonListenerRepeat = e -> {
 
         };
@@ -386,6 +410,8 @@ public class Player {
             while (x && playerEnabled) {
                 window.setEnabledPlayPauseButton(true);
                 window.setEnabledStopButton(true);
+                window.setEnabledPreviousButton(true);
+                window.setEnabledNextButton(true);
                 if (!playerPaused){
                     lockReproducao.lock();
                     try {
