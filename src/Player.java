@@ -81,8 +81,8 @@ public class Player {
         ActionListener buttonListenerPlayPause = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (!playerPaused) {
-                    playerPaused = true;
+                if (!getPause()) {
+                    setPause();
                     window.updatePlayPauseButtonIcon(false);
                     lockReproducao.lock();
                     try {
@@ -91,7 +91,7 @@ public class Player {
                         lockReproducao.unlock();
                     }
                 } else {
-                    playerPaused = false;
+                    setPause();
                     window.updatePlayPauseButtonIcon(true);
                 }
             }
@@ -185,33 +185,92 @@ public class Player {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                //Funciona constantemente se a música tiver parada mas se estiver rodando pega de maneira inconsistente.
 
-                newFrame = e.getX();
-                if (newFrame > currentFrame){
-                    try {
-                        skipToFrame(newFrame);
-                    } catch (BitstreamException ex) {
-                        ex.printStackTrace();
+                int Frame = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
+                System.out.println(window.getScrubberValue());
+                if (Frame > currentFrame) {
+                    if (getPause()){
+                        setPause();
+                        lock.lock();
+                        try {
+                            skipToFrame(Frame);
+                        } catch (BitstreamException ex) {
+                            ex.printStackTrace();
+                        } finally {
+                            lock.unlock();
+                        }
+                        setPause();
+                        lockReproducao.lock();
+                        try {
+                            paused.signalAll();
+                        } finally {
+                            lockReproducao.unlock();
+                        }
+                    } else {
+                        lock.lock();
+                        try {
+                            skipToFrame(Frame);
+                        } catch (BitstreamException ex) {
+                            ex.printStackTrace();
+                        } finally {
+                            lock.unlock();
+                        }
                     }
-
                 } else {
-                    try {
-                    bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                    device = FactoryRegistry.systemRegistry().createAudioDevice();
-                    device.open(decoder = new Decoder());
-                    currentFrame = 0;
-                    }
-                    catch (FileNotFoundException | JavaLayerException j) {
-                        j.printStackTrace();
-                    }
-                    try {
-                        skipToFrame(newFrame);
-                    } catch (BitstreamException ex) {
-                        ex.printStackTrace();
+                    if (getPause()){
+                        setPause();
+                        lock.lock();
+                        try {
+                            bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                            device = FactoryRegistry.systemRegistry().createAudioDevice();
+                            device.open(decoder = new Decoder());
+                            currentFrame = 0;
+                        } catch (FileNotFoundException | JavaLayerException j) {
+                            j.printStackTrace();
+                        }
+                        finally {
+                            lock.unlock();
+                        }
+                        lock.lock();
+                        try {
+                            skipToFrame(Frame);
+                        } catch (BitstreamException ex) {
+                            ex.printStackTrace();
+                        } finally {
+                            lock.unlock();
+                        }
+                        setPause();
+                        lockReproducao.lock();
+                        try {
+                            paused.signalAll();
+                        } finally {
+                            lockReproducao.unlock();
+                        }
+                    } else {
+                        lock.lock();
+                        try {
+                            bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                            device = FactoryRegistry.systemRegistry().createAudioDevice();
+                            device.open(decoder = new Decoder());
+                            currentFrame = 0;
+                        } catch (FileNotFoundException | JavaLayerException j) {
+                            j.printStackTrace();
+                        }
+                        finally {
+                            lock.unlock();
+                        }
+                        lock.lock();
+                        try {
+                            skipToFrame(Frame);
+                        } catch (BitstreamException ex) {
+                            ex.printStackTrace();
+                        } finally {
+                            lock.unlock();
+                        }
                     }
 
                 }
-                System.out.println(currentFrame + "  -  " + currentSong.getMsPerFrame() + " - " + newFrame);
             }
 
             @Override
@@ -228,18 +287,6 @@ public class Player {
         MouseMotionListener scrubberListenerMotion = new MouseMotionListener() {
             @Override
             public void mouseDragged(MouseEvent e) {
-
-                //Essa parte ta fazendo nada quep preste
-                try {
-                    thread.wait();
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-                currentFrame = e.getX();
-                thread.notify();
-                //rodar um Thread que fique recebendo o valor de e.getX e atualizando na tela, lide com
-                // o caso de e.getX sair da tela
-                //Pare quando o mouse deixar de ser pressionado
 
             }
 
@@ -266,11 +313,15 @@ public class Player {
         if (device != null) {
             Header h = bitstream.readFrame();
             if (h == null) return false;
-
-            SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
-            device.write(output.getBuffer(), 0, output.getBufferLength());
-            bitstream.closeFrame();
-            currentFrame ++;
+            lock.lock();
+            try {
+                SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
+                device.write(output.getBuffer(), 0, output.getBufferLength());
+                bitstream.closeFrame();
+                currentFrame ++;
+            } finally {
+                lock.unlock();
+            }
         }
         return true;
     }
@@ -340,6 +391,24 @@ public class Player {
         lock.lock();
         try {
             return tocando;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void setPause() {
+        lock.lock();
+        try {
+            playerPaused = !playerPaused;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean getPause() {
+        lock.lock();
+        try {
+            return playerPaused;
         } finally {
             lock.unlock();
         }
@@ -422,11 +491,13 @@ public class Player {
             setPlay();
             boolean x = true;
             while (x && playerEnabled) {
+                window.setEnabledScrubber(true);
+                window.setEnabledScrubberArea(true);
                 window.setEnabledPlayPauseButton(true);
                 window.setEnabledStopButton(true);
                 window.setEnabledPreviousButton(true);
                 window.setEnabledNextButton(true);
-                if (!playerPaused){
+                if (!getPause()){
                     lockReproducao.lock();
                     try {
                         paused.await();
@@ -442,7 +513,9 @@ public class Player {
                     break;
                 }
                 try {
-                    x = playNextFrame();
+                    if (getPause()){
+                        x = playNextFrame();
+                    }
                     window.setTime((int) (currentFrame * currentSong.getMsPerFrame()), (int) currentSong.getMsLength());
                 } catch (JavaLayerException ignore) {
                 }
