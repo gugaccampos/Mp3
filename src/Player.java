@@ -5,6 +5,7 @@ import javazoom.jl.player.AudioDevice;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
+import java.util.Random;
 
 import java.awt.event.*;
 import java.util.concurrent.locks.Condition;
@@ -51,6 +52,7 @@ public class Player {
     private Condition paused = lockReproducao.newCondition();
     private boolean stop = false;
     private boolean repetido = false;
+    private boolean aleatorio = false;
 
     public Player() {
         this.musicas = new ArrayList<Song>();
@@ -120,8 +122,12 @@ public class Player {
             }
         };
 
-        ActionListener buttonListenerShuffle = e -> {
+        ActionListener buttonListenerShuffle = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setRandom();
 
+            }
         };
 
         ActionListener buttonListenerPrevious = new ActionListener() {
@@ -432,6 +438,24 @@ public class Player {
         }
     }
 
+    private void setRandom() {
+        lock.lock();
+        try {
+            aleatorio = !aleatorio;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean getRandom() {
+        lock.lock();
+        try {
+            return aleatorio;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public void removeFromQueue(String filePath) {
     }
 
@@ -471,7 +495,34 @@ public class Player {
     public void stop() {
     }
 
-    public void pause() {
+    public void random() {
+        Random x = new Random();
+        int t;
+        t = (x.nextInt() % musicas.size());
+        if (t < 0){
+            t = t + musicas.size();
+        }
+        if (currentSong == musicas.get(t)){
+            if (t == (musicas.size()-1)){
+                currentSong = musicas.get(t-1);
+            } else {
+                currentSong = musicas.get(t+1);
+            }
+        } else {
+            currentSong = musicas.get(t);
+        }
+
+        try {
+                bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                device = FactoryRegistry.systemRegistry().createAudioDevice();
+                device.open(decoder = new Decoder());
+                thread = new Thread(new Play());
+                thread.start();
+
+        } catch (FileNotFoundException | JavaLayerException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void resume() {
@@ -497,6 +548,8 @@ public class Player {
                 window.setEnabledStopButton(true);
                 window.setEnabledPreviousButton(true);
                 window.setEnabledNextButton(true);
+                window.setEnabledRepeatButton(true);
+                window.setEnabledShuffleButton(true);
                 if (!getPause()){
                     lockReproducao.lock();
                     try {
@@ -523,22 +576,12 @@ public class Player {
             window.resetMiniPlayer();
             currentFrame = 0;
             setPlay();
-        }
-    }
-
-    static class SliderArrasta implements  Runnable {
-
-        @Override
-        public void run() {
-            try {
-                System.out.println("rwr");
-            } finally {
-                
+            if (getRandom()){
+                random();
             }
-            ;
-
         }
     }
+
     //</editor-fold>
 
     //<editor-fold desc="Getters and Setters">
