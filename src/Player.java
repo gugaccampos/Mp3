@@ -5,6 +5,9 @@ import javazoom.jl.player.AudioDevice;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
+
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Random;
 
 import java.awt.event.*;
@@ -17,8 +20,8 @@ import java.util.ArrayList;
 
 public class Player {
     ArrayList<Song> musicas = new ArrayList<Song>();
+    ArrayList<Song> musicas_shuffle = new ArrayList<Song>();
 
-    private int numero_de_musica = 0;
 
     /**
      * The MPEG audio bitstream.
@@ -36,11 +39,10 @@ public class Player {
 
     private PlayerWindow window;
 
-    private boolean repeat = false;
-    private boolean shuffle = false;
-    private boolean playerEnabled = true;
-    private boolean playerPaused = true;
+
+
     private Song currentSong;
+    private Song currentSong_shuffle;
     private Song new_music;
     private String song;
     private int currentFrame = 0;
@@ -50,11 +52,18 @@ public class Player {
     private Lock lock = new ReentrantLock();
     private Lock lockReproducao = new ReentrantLock();
     private Condition paused = lockReproducao.newCondition();
+    private boolean playerEnabled = true;
+    private boolean playerPaused = true;
     private boolean stop = false;
     private boolean repetido = false;
     private boolean aleatorio = false;
+    private boolean apertado = false;
+    private boolean repeat = false;
+    private boolean mexido = false;
+    private boolean playing_random = false;
 
     public Player() {
+        this.musicas_shuffle = new ArrayList<Song>();
         this.musicas = new ArrayList<Song>();
         ActionListener buttonListenerPlayNow = new ActionListener() {
             @Override
@@ -116,6 +125,7 @@ public class Player {
                 for (int i = 0; i < musicas.size(); i++) {
                     if (musicas.get(i).getFilePath() == id) {
                         musicas.remove(i);
+                        musicas_shuffle.remove(i);
                     }
                 }
                 window.updateQueueList(getQueueAsArray());
@@ -125,28 +135,51 @@ public class Player {
         ActionListener buttonListenerShuffle = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                mexido = false;
                 setRandom();
-
             }
         };
 
         ActionListener buttonListenerPrevious = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                for (int i = 0; i < musicas.size(); i++) {
-                    if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
-                        if (i == 0){
-                            setStop();
-                            song = musicas.get(musicas.size()-1).getFilePath();
-                            start(song);
-                            break;
-                        } else {
-                            setStop();
-                            start(song);
-                            break;
-                        }
+                if (getRandom()){
+                    if (!mexido){
+                        random();
                     } else {
-                        song = musicas.get(i).getFilePath();
+                    for (int i = 0; i < musicas_shuffle.size(); i++) {
+                        if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
+                            if (i == 0){
+                                setStop();
+                                song = musicas_shuffle.get(musicas_shuffle.size()-1).getFilePath();
+                                start_shuffle(song);
+                                break;
+                            } else {
+                                setStop();
+                                start_shuffle(song);
+                                break;
+                            }
+                        } else {
+                            song = musicas_shuffle.get(i).getFilePath();
+                        }
+                    }
+                    }
+                } else {
+                    for (int i = 0; i < musicas.size(); i++) {
+                        if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
+                            if (i == 0){
+                                setStop();
+                                song = musicas.get(musicas.size()-1).getFilePath();
+                                start(song);
+                                break;
+                            } else {
+                                setStop();
+                                start(song);
+                                break;
+                            }
+                        } else {
+                            song = musicas.get(i).getFilePath();
+                        }
                     }
                 }
             }
@@ -156,27 +189,54 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 int counter = 0;
-                for (int i = 0; i < musicas.size(); i++) {
-                    if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
-                        counter = 1;
+                if (getRandom()){
+                    if (!mexido){
+                        random();
+                    } else {
+                    for (int i = 0; i < musicas_shuffle.size(); i++) {
+                        if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
+                            counter = 1;
+                        }
+                        else if (counter == 1){
+                            song = musicas_shuffle.get(i).getFilePath();
+                            setStop();
+                            start_shuffle(song);
+                            break;
+                        }
+                        if (i+1 == musicas_shuffle.size()) {
+                            song = musicas_shuffle.get(0).getFilePath();
+                            setStop();
+                            start_shuffle(song);
+                            break;
+                        }
                     }
-                    else if (counter == 1){
-                        song = musicas.get(i).getFilePath();
-                        setStop();
-                        start(song);
-                        break;
                     }
-                    if (i+1 == musicas.size()) {
-                        song = musicas.get(0).getFilePath();
-                        setStop();
-                        start(song);
-                        break;
+                } else {
+                    for (int i = 0; i < musicas.size(); i++) {
+                        if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
+                            counter = 1;
+                        }
+                        else if (counter == 1){
+                            song = musicas.get(i).getFilePath();
+                            setStop();
+                            start(song);
+                            break;
+                        }
+                        if (i+1 == musicas.size()) {
+                            song = musicas.get(0).getFilePath();
+                            setStop();
+                            start(song);
+                            break;
+                        }
                     }
                 }
             }
         };
-        ActionListener buttonListenerRepeat = e -> {
-
+        ActionListener buttonListenerRepeat = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                setRepeat();
+            }
         };
         MouseListener scrubberListenerClick = new MouseListener() {
             @Override
@@ -374,6 +434,7 @@ public class Player {
             }
             if (!repetido){
                 musicas.add(song);
+                musicas_shuffle.add(song);
             } else {
                 repetido = false;
                 System.out.println("Esta música já foi adicionada");
@@ -382,6 +443,19 @@ public class Player {
         } finally {
             lock.unlock();
         }
+    }
+
+    public void removeFromQueue(String filePath) {
+    }
+
+    public String[][] getQueueAsArray() {
+        String[][] array = new String[musicas.size()][7];
+        for (int i = 0; i < musicas.size(); i++) {
+            if (musicas.get(i) != null) {
+                array[i] = musicas.get(i).getDisplayInfo();
+            }
+        }
+        return array;
     }
 
     private void setPlay() {
@@ -456,23 +530,49 @@ public class Player {
         }
     }
 
-    public void removeFromQueue(String filePath) {
+    private void setPlayRandom() {
+        lock.lock();
+        try {
+            playing_random = !playing_random;
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public String[][] getQueueAsArray() {
-        String[][] array = new String[musicas.size()][7];
-        for (int i = 0; i < musicas.size(); i++) {
-            if (musicas.get(i) != null) {
-                array[i] = musicas.get(i).getDisplayInfo();
-            }
+    private boolean getPlayRandom() {
+        lock.lock();
+        try {
+            return playing_random;
+        } finally {
+            lock.unlock();
         }
-        return array;
+    }
+
+    private void setRepeat() {
+        lock.lock();
+        try {
+            repeat = !repeat;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean getRepeat() {
+        lock.lock();
+        try {
+            return repeat;
+        } finally {
+            lock.unlock();
+        }
     }
 
     //</editor-fold>
 
     //<editor-fold desc="Controls">
     public void start(String filePath) {
+        if (getPlayRandom()){
+            setPlayRandom();
+        }
 
         for (int i = 0; i < musicas.size(); i++) {
             if (filePath.equals(musicas.get(i).getFilePath())) {
@@ -492,32 +592,19 @@ public class Player {
 
     }
 
-    public void stop() {
-    }
+    public void start_shuffle(String filePath) {
 
-    public void random() {
-        Random x = new Random();
-        int t;
-        t = (x.nextInt() % musicas.size());
-        if (t < 0){
-            t = t + musicas.size();
-        }
-        if (currentSong == musicas.get(t)){
-            if (t == (musicas.size()-1)){
-                currentSong = musicas.get(t-1);
-            } else {
-                currentSong = musicas.get(t+1);
+        for (int i = 0; i < musicas_shuffle.size(); i++) {
+            if (filePath.equals(musicas_shuffle.get(i).getFilePath())) {
+                currentSong_shuffle = musicas_shuffle.get(i);
             }
-        } else {
-            currentSong = musicas.get(t);
         }
-
         try {
-                bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                device = FactoryRegistry.systemRegistry().createAudioDevice();
-                device.open(decoder = new Decoder());
-                thread = new Thread(new Play());
-                thread.start();
+            bitstream = new Bitstream(currentSong_shuffle.getBufferedInputStream());
+            device = FactoryRegistry.systemRegistry().createAudioDevice();
+            device.open(decoder = new Decoder());
+            thread = new Thread(new Play_shuffle());
+            thread.start();
 
         } catch (FileNotFoundException | JavaLayerException e) {
             e.printStackTrace();
@@ -526,13 +613,75 @@ public class Player {
     }
 
     public void resume() {
+        int x = 0;
+        if (getRandom()){
+            for (int i = 0; i < musicas_shuffle.size(); i++){
+                if (musicas_shuffle.get(i) == currentSong_shuffle){
+                    x = i;
+                }
+            }
+            if (((x+1) == musicas_shuffle.size()) && (getRepeat())){
+                currentSong_shuffle = musicas_shuffle.get(0);
+            } else {
+                currentSong_shuffle = musicas_shuffle.get(x+1);
+            }
+            try {
+                bitstream = new Bitstream(currentSong_shuffle.getBufferedInputStream());
+                device = FactoryRegistry.systemRegistry().createAudioDevice();
+                device.open(decoder = new Decoder());
+                thread = new Thread(new Play_shuffle());
+                thread.start();
+            } catch (FileNotFoundException | JavaLayerException e) {
+                e.printStackTrace();
+            }
+        } else {
+            if (getPlayRandom()){
+                setPlayRandom();
+            }
+            for (int i = 0; i < musicas.size(); i++){
+                if (musicas.get(i) == currentSong){
+                    x = i;
+                }
+            }
+            if (((x+1) == musicas.size()) && (getRepeat())){
+                currentSong = musicas.get(0);
+            } else {
+                currentSong = musicas.get(x+1);
+            }
+            try {
+                bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                device = FactoryRegistry.systemRegistry().createAudioDevice();
+                device.open(decoder = new Decoder());
+                thread = new Thread(new Play());
+                thread.start();
+            } catch (FileNotFoundException | JavaLayerException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public void next() {
+    public void random() {
+        if (getPlay()){
+            setStop();
+        }
+        mexido = true;
+        if (!getPlayRandom()){
+            setPlayRandom();
+        }
+        Collections.shuffle(musicas_shuffle);
+        for (int i = 0; i < musicas_shuffle.size(); i++){
+            if (musicas_shuffle.get(i) == currentSong){
+                Song provisorio = musicas_shuffle.get(i);
+                musicas_shuffle.add(provisorio);
+                musicas_shuffle.remove(i);
+                break;
+            }
+        }
+        song = musicas_shuffle.get(0).getFilePath();
+        start_shuffle(song);
+
     }
 
-    public void previous() {
-    }
     class Play implements Runnable {
 
         @Override
@@ -563,6 +712,7 @@ public class Player {
                 }
                 if (getStop()){
                     setStop();
+                    apertado = true;
                     break;
                 }
                 try {
@@ -576,8 +726,66 @@ public class Player {
             window.resetMiniPlayer();
             currentFrame = 0;
             setPlay();
-            if (getRandom()){
-                random();
+            if (apertado){
+                apertado = false;
+            }else {
+                if ((getRandom()) && (!mexido)){
+                    random();
+                } else {
+                    resume();
+                }
+            }
+        }
+    }
+
+    class Play_shuffle implements Runnable {
+
+        @Override
+        public void run() {
+            window.updatePlayPauseButtonIcon(false);
+            currentFrame = 0;
+            setPlay();
+            boolean x = true;
+            while (x && playerEnabled) {
+                window.setEnabledScrubber(true);
+                window.setEnabledScrubberArea(true);
+                window.setEnabledPlayPauseButton(true);
+                window.setEnabledStopButton(true);
+                window.setEnabledPreviousButton(true);
+                window.setEnabledNextButton(true);
+                window.setEnabledRepeatButton(true);
+                window.setEnabledShuffleButton(true);
+                if (!getPause()){
+                    lockReproducao.lock();
+                    try {
+                        paused.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        lockReproducao.unlock();
+                    }
+
+                }
+                if (getStop()){
+                    setStop();
+                    apertado = true;
+                    break;
+                }
+                try {
+                    if (getPause()){
+                        x = playNextFrame();
+                    }
+                    window.setTime((int) (currentFrame * currentSong_shuffle.getMsPerFrame()), (int) currentSong_shuffle.getMsLength());
+                } catch (JavaLayerException ignore) {
+                }
+            }
+            window.resetMiniPlayer();
+            currentFrame = 0;
+            setPlay();
+            if (apertado){
+                apertado = false;
+            }else {
+                resume();
             }
         }
     }
