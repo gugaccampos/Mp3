@@ -61,6 +61,7 @@ public class Player {
     private boolean repeat = false;
     private boolean mexido = false;
     private boolean playing_random = false;
+    private boolean terminou = true;
 
     public Player() {
         this.musicas_shuffle = new ArrayList<Song>();
@@ -68,9 +69,11 @@ public class Player {
         ActionListener buttonListenerPlayNow = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                //se alguma música tiver tocando, a gente para ela
                 if (getPlay()){
                     setStop();
                 }
+                //inicia a musica selecionada
                 start(window.getSelectedSong());
             }
         };
@@ -79,6 +82,7 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
+                    //adiciona a música na array list e no player
                     new_music = window.getNewSong();
                     addToQueue(new_music);
                     window.updateQueueList(getQueueAsArray());
@@ -92,9 +96,12 @@ public class Player {
         ActionListener buttonListenerPlayPause = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                //checa se ta pausado
                 if (!getPause()) {
+                    //muda o booleano de pausado para não pausado e o ícone
                     setPause();
                     window.updatePlayPauseButtonIcon(false);
+                    //tira do pause
                     lockReproducao.lock();
                     try {
                         paused.signalAll();
@@ -102,6 +109,7 @@ public class Player {
                         lockReproducao.unlock();
                     }
                 } else {
+                    //muda o booleano para pausar na thread q ta tocando
                     setPause();
                     window.updatePlayPauseButtonIcon(true);
                 }
@@ -111,6 +119,7 @@ public class Player {
         ActionListener buttonListenerStop = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                //muda o booleano de stop
                 setStop();
             }
         };
@@ -119,9 +128,11 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String id = window.getSelectedSong();
+                //checa se a música que vai ser removida é a que ta tocando
                 if (currentSong.getFilePath().equals(id) && thread!=null){
                     setStop();
                 }
+                //remove a musica do array e do player
                 for (int i = 0; i < musicas.size(); i++) {
                     if (musicas.get(i).getFilePath() == id) {
                         musicas.remove(i);
@@ -136,6 +147,7 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 mexido = false;
+                //muda o booleando de random
                 setRandom();
             }
         };
@@ -143,41 +155,51 @@ public class Player {
         ActionListener buttonListenerPrevious = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                //checa se ta no shuffle
                 if (getRandom()){
+                    //checa se ta misturado ou não ja
                     if (!mexido){
                         random();
                     } else {
-                    for (int i = 0; i < musicas_shuffle.size(); i++) {
-                        if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
-                            if (i == 0){
-                                setStop();
-                                song = musicas_shuffle.get(musicas_shuffle.size()-1).getFilePath();
-                                start_shuffle(song);
-                                break;
+                        for (int i = 0; i < musicas_shuffle.size(); i++) {
+                            if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
+                                //checa se a música atual é a primeira da playlist
+                                if (i == 0){
+                                    setStop();
+                                    song = musicas_shuffle.get(musicas_shuffle.size()-1).getFilePath();
+                                    //manda começar a última musica
+                                    start_shuffle(song);
+                                    break;
+                                } else {
+                                    setStop();
+                                    //manda começar a música anterior
+                                    start_shuffle(song);
+                                    break;
+                                }
                             } else {
-                                setStop();
-                                start_shuffle(song);
-                                break;
+                                // define a música anterior a cada loop do for
+                                song = musicas_shuffle.get(i).getFilePath();
                             }
-                        } else {
-                            song = musicas_shuffle.get(i).getFilePath();
                         }
-                    }
                     }
                 } else {
                     for (int i = 0; i < musicas.size(); i++) {
                         if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
+                            //checa se a música atual é a primeira da playlist
                             if (i == 0){
                                 setStop();
                                 song = musicas.get(musicas.size()-1).getFilePath();
+                                //manda começar a última musica
                                 start(song);
                                 break;
                             } else {
                                 setStop();
+                                //manda começar a música anterior
                                 start(song);
                                 break;
                             }
                         } else {
+                            // define a música anterior a cada loop do for
                             song = musicas.get(i).getFilePath();
                         }
                     }
@@ -189,42 +211,52 @@ public class Player {
             @Override
             public void actionPerformed(ActionEvent e) {
                 int counter = 0;
+                //checa se ta no shuffle
                 if (getRandom()){
+                    //checa se ta misturado ou não ja
                     if (!mexido){
                         random();
                     } else {
-                    for (int i = 0; i < musicas_shuffle.size(); i++) {
-                        if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
-                            counter = 1;
+                        for (int i = 0; i < musicas_shuffle.size(); i++) {
+                            //checa a cada loop do for se a música da lista é a atual, se for, muda o contador.
+                            if (musicas_shuffle.get(i).getFilePath() == currentSong_shuffle.getFilePath()) {
+                                counter = 1;
+                            }
+                            else if (counter == 1){
+                                song = musicas_shuffle.get(i).getFilePath();
+                                setStop();
+                                //manda começar a próxima música
+                                start_shuffle(song);
+                                break;
+                            }
+                            //checa se a música atual é a última da playlist
+                            if (i+1 == musicas_shuffle.size()) {
+                                song = musicas_shuffle.get(0).getFilePath();
+                                setStop();
+                                //manda começar a primeira música
+                                start_shuffle(song);
+                                break;
+                            }
                         }
-                        else if (counter == 1){
-                            song = musicas_shuffle.get(i).getFilePath();
-                            setStop();
-                            start_shuffle(song);
-                            break;
-                        }
-                        if (i+1 == musicas_shuffle.size()) {
-                            song = musicas_shuffle.get(0).getFilePath();
-                            setStop();
-                            start_shuffle(song);
-                            break;
-                        }
-                    }
                     }
                 } else {
                     for (int i = 0; i < musicas.size(); i++) {
+                        //checa a cada loop do for se a música da lista é a atual, se for, muda o contador.
                         if (musicas.get(i).getFilePath() == currentSong.getFilePath()) {
                             counter = 1;
                         }
                         else if (counter == 1){
                             song = musicas.get(i).getFilePath();
                             setStop();
+                            //manda começar a próxima música
                             start(song);
                             break;
                         }
+                        //checa se a música atual é a última da playlist
                         if (i+1 == musicas.size()) {
                             song = musicas.get(0).getFilePath();
                             setStop();
+                            //manda começar a primeira música
                             start(song);
                             break;
                         }
@@ -235,6 +267,7 @@ public class Player {
         ActionListener buttonListenerRepeat = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                //muda o booleando de repeat
                 setRepeat();
             }
         };
@@ -253,19 +286,25 @@ public class Player {
             public void mouseReleased(MouseEvent e) {
                 //Funciona constantemente se a música tiver parada mas se estiver rodando pega de maneira inconsistente.
 
+                //pega o frame do toque
                 int Frame = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
                 System.out.println(window.getScrubberValue());
+                //checa se ele é antes ou depois do frame atual da música, se for depois, entra aqui
                 if (Frame > currentFrame) {
+                    //checa se tá pausado
                     if (getPause()){
+                        //manda mudar o boolenao de pausa
                         setPause();
                         lock.lock();
                         try {
+                            //manda ir até o frame
                             skipToFrame(Frame);
                         } catch (BitstreamException ex) {
                             ex.printStackTrace();
                         } finally {
                             lock.unlock();
                         }
+                        //despausa
                         setPause();
                         lockReproducao.lock();
                         try {
@@ -276,6 +315,7 @@ public class Player {
                     } else {
                         lock.lock();
                         try {
+                            //manda mudar o frame
                             skipToFrame(Frame);
                         } catch (BitstreamException ex) {
                             ex.printStackTrace();
@@ -284,9 +324,12 @@ public class Player {
                         }
                     }
                 } else {
+                    //checa o pause
                     if (getPause()){
+                        //pause
                         setPause();
                         lock.lock();
+                        //manda recomeçar a música
                         try {
                             bitstream = new Bitstream(currentSong.getBufferedInputStream());
                             device = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -300,12 +343,14 @@ public class Player {
                         }
                         lock.lock();
                         try {
+                            //vai até o frame certo
                             skipToFrame(Frame);
                         } catch (BitstreamException ex) {
                             ex.printStackTrace();
                         } finally {
                             lock.unlock();
                         }
+                        //despausa
                         setPause();
                         lockReproducao.lock();
                         try {
@@ -315,6 +360,7 @@ public class Player {
                         }
                     } else {
                         lock.lock();
+                        //manda recomeçar a música
                         try {
                             bitstream = new Bitstream(currentSong.getBufferedInputStream());
                             device = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -328,6 +374,7 @@ public class Player {
                         }
                         lock.lock();
                         try {
+                            //vai até o frame certo
                             skipToFrame(Frame);
                         } catch (BitstreamException ex) {
                             ex.printStackTrace();
@@ -428,15 +475,18 @@ public class Player {
         try {
             for (int i=0;i<musicas.size();i++) {
                 String caminho = musicas.get(i).getFilePath();
+                //checa se já tem a música na playlist
                 if (caminho.equals(song.getFilePath())){
                     repetido = true;
                 }
             }
             if (!repetido){
+                //adiciona se não for repetida
                 musicas.add(song);
                 musicas_shuffle.add(song);
             } else {
                 repetido = false;
+                //avisa que já foi adicionada
                 System.out.println("Esta música já foi adicionada");
             }
 
@@ -457,6 +507,8 @@ public class Player {
         }
         return array;
     }
+
+    //aqui esta as funções que mandam o booleano quando são chamadas, ou mudam ele.
 
     private void setPlay() {
         lock.lock();
@@ -566,10 +618,13 @@ public class Player {
         }
     }
 
+    //termina aqui elas
+
     //</editor-fold>
 
     //<editor-fold desc="Controls">
     public void start(String filePath) {
+        //checa se ta no shuffle
         if (getPlayRandom()){
             setPlayRandom();
         }
@@ -579,6 +634,7 @@ public class Player {
                 currentSong = musicas.get(i);
             }
         }
+        //manda iniciar uma thread pra tocar a musica
         try {
             bitstream = new Bitstream(currentSong.getBufferedInputStream());
             device = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -599,6 +655,7 @@ public class Player {
                 currentSong_shuffle = musicas_shuffle.get(i);
             }
         }
+        //manda iniciar uma thread pra tocar a musica
         try {
             bitstream = new Bitstream(currentSong_shuffle.getBufferedInputStream());
             device = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -612,6 +669,7 @@ public class Player {
 
     }
 
+    //aqui temos a função que manda tocar a próxima música
     public void resume() {
         int x = 0;
         if (getRandom()){
@@ -620,21 +678,29 @@ public class Player {
                     x = i;
                 }
             }
+            //checa se é a última música da playlist, se for, checa se o repeat está ligado ou não para reiniciála
             if (((x+1) == musicas_shuffle.size()) && (getRepeat())){
                 currentSong_shuffle = musicas_shuffle.get(0);
-            } else {
+                terminou = false;
+            } else if ((x+1) != musicas.size()) {
                 currentSong_shuffle = musicas_shuffle.get(x+1);
+                terminou = false;
             }
-            try {
+            //checa se é para mandar começar a próxima música ou não
+            if (!terminou){
+                terminou = true;
+                try {
                 bitstream = new Bitstream(currentSong_shuffle.getBufferedInputStream());
                 device = FactoryRegistry.systemRegistry().createAudioDevice();
                 device.open(decoder = new Decoder());
                 thread = new Thread(new Play_shuffle());
                 thread.start();
-            } catch (FileNotFoundException | JavaLayerException e) {
-                e.printStackTrace();
+                } catch (FileNotFoundException | JavaLayerException e) {
+                    e.printStackTrace();
+                }
             }
         } else {
+            //igual ao passado
             if (getPlayRandom()){
                 setPlayRandom();
             }
@@ -645,22 +711,28 @@ public class Player {
             }
             if (((x+1) == musicas.size()) && (getRepeat())){
                 currentSong = musicas.get(0);
-            } else {
+                terminou = false;
+            } else if ((x+1) != musicas.size()){
                 currentSong = musicas.get(x+1);
+                terminou = false;
             }
-            try {
-                bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                device = FactoryRegistry.systemRegistry().createAudioDevice();
-                device.open(decoder = new Decoder());
-                thread = new Thread(new Play());
-                thread.start();
-            } catch (FileNotFoundException | JavaLayerException e) {
-                e.printStackTrace();
+            if (!terminou){
+                terminou = true;
+                try {
+                    bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                    device = FactoryRegistry.systemRegistry().createAudioDevice();
+                    device.open(decoder = new Decoder());
+                    thread = new Thread(new Play());
+                    thread.start();
+                } catch (FileNotFoundException | JavaLayerException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
 
     public void random() {
+        //verifica se tem alguma música tocando
         if (getPlay()){
             setStop();
         }
@@ -668,8 +740,10 @@ public class Player {
         if (!getPlayRandom()){
             setPlayRandom();
         }
+        //mistura as músicas
         Collections.shuffle(musicas_shuffle);
         for (int i = 0; i < musicas_shuffle.size(); i++){
+            //coloca a música atual como a última da fila
             if (musicas_shuffle.get(i) == currentSong){
                 Song provisorio = musicas_shuffle.get(i);
                 musicas_shuffle.add(provisorio);
@@ -678,6 +752,7 @@ public class Player {
             }
         }
         song = musicas_shuffle.get(0).getFilePath();
+        //manda iniciar a música
         start_shuffle(song);
 
     }
@@ -690,7 +765,9 @@ public class Player {
             currentFrame = 0;
             setPlay();
             boolean x = true;
+            //checa se ativou a flag que a música acabou ou se ainda é pra tocar
             while (x && playerEnabled) {
+                //permite que os botões funcionem
                 window.setEnabledScrubber(true);
                 window.setEnabledScrubberArea(true);
                 window.setEnabledPlayPauseButton(true);
@@ -699,9 +776,11 @@ public class Player {
                 window.setEnabledNextButton(true);
                 window.setEnabledRepeatButton(true);
                 window.setEnabledShuffleButton(true);
+                //checa se pediu pra pausar
                 if (!getPause()){
                     lockReproducao.lock();
                     try {
+                        //manda pausar
                         paused.await();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -710,6 +789,7 @@ public class Player {
                     }
 
                 }
+                //checa se pedira pra dar stop, caso tenham, para a reprodução geral
                 if (getStop()){
                     setStop();
                     apertado = true;
@@ -717,21 +797,26 @@ public class Player {
                 }
                 try {
                     if (getPause()){
+                        //pede pra tocar o próximo frame e recebe um booleano avisando se existe um proximo frame ou não
                         x = playNextFrame();
                     }
+                    //atualiza o scrubber
                     window.setTime((int) (currentFrame * currentSong.getMsPerFrame()), (int) currentSong.getMsLength());
                 } catch (JavaLayerException ignore) {
                 }
             }
+            //reseta o player
             window.resetMiniPlayer();
             currentFrame = 0;
             setPlay();
             if (apertado){
                 apertado = false;
             }else {
+                //checa se eh pra dar um shuffle, se for, ativa a função
                 if ((getRandom()) && (!mexido)){
                     random();
                 } else {
+                    //manda ativar a função de seguir
                     resume();
                 }
             }
@@ -740,6 +825,7 @@ public class Player {
 
     class Play_shuffle implements Runnable {
 
+        //player igual ao passado só que do shuffle
         @Override
         public void run() {
             window.updatePlayPauseButtonIcon(false);
